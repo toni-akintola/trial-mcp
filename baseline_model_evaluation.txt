@@ -1,0 +1,141 @@
+Loading ground truth data from Hugging Face Hub (ncbi/TrialGPT-Criterion-Annotations)...
+Using 'train' split from the dataset.
+Successfully loaded 1015 records from the Hugging Face dataset.
+Loading model output from: results/matching_results_gpt-4-turbo_sigir_sample10.json
+Warning: Trial ID NCT01397994 for patient sigir-20141 not found in model results.
+Warning: Trial ID NCT00149227 for patient sigir-20141 not found in model results.
+Warning: Trial ID NCT02618655 for patient sigir-20142 not found in model results.
+Warning: Trial ID NCT00711399 for patient sigir-20142 not found in model results.
+Warning: Trial ID NCT01452971 for patient sigir-20143 not found in model results.
+Warning: Trial ID NCT02490059 for patient sigir-20143 not found in model results.
+Warning: Trial ID NCT02390596 for patient sigir-20144 not found in model results.
+Warning: Trial ID NCT00841789 for patient sigir-20144 not found in model results.
+Warning: Trial ID NCT01935141 for patient sigir-20145 not found in model results.
+Warning: Trial ID NCT00163709 for patient sigir-20145 not found in model results.
+Warning: Trial ID NCT00015626 for patient sigir-20146 not found in model results.
+Warning: Trial ID NCT00845988 for patient sigir-20147 not found in model results.
+Warning: Trial ID NCT01863628 for patient sigir-20147 not found in model results.
+Warning: Trial ID NCT01628315 for patient sigir-20148 not found in model results.
+Warning: Criterion index '1' (type: inclusion) not found in model predictions for sigir-20149, NCT02615912. GT Text: Subjects with visible skin disease, tattoos, skin condition, or abnormal skin color
+Warning: Trial ID NCT01950026 for patient sigir-20149 not found in model results.
+Warning: Trial ID NCT02097186 for patient sigir-201410 not found in model results.
+Warning: Trial ID NCT02264964 for patient sigir-201410 not found in model results.
+Warning: Trial ID NCT01526382 for patient sigir-201411 not found in model results.
+Warning: Trial ID NCT01723137 for patient sigir-201411 not found in model results.
+Warning: Trial ID NCT00271427 for patient sigir-201412 not found in model results.
+Warning: Trial ID NCT01551498 for patient sigir-201412 not found in model results.
+Warning: Trial ID NCT02264769 for patient sigir-201413 not found in model results.
+Warning: Trial ID NCT00163709 for patient sigir-201413 not found in model results.
+Warning: Trial ID NCT01624545 for patient sigir-201414 not found in model results.
+Warning: Trial ID NCT01869855 for patient sigir-201414 not found in model results.
+Warning: Trial ID NCT00277680 for patient sigir-201415 not found in model results.
+Warning: Trial ID NCT00180739 for patient sigir-201415 not found in model results.
+Warning: Trial ID NCT02238756 for patient sigir-201416 not found in model results.
+Warning: Trial ID NCT02374814 for patient sigir-201416 not found in model results.
+Warning: Trial ID NCT01745731 for patient sigir-201417 not found in model results.
+Warning: Trial ID NCT02556359 for patient sigir-201417 not found in model results.
+Warning: Trial ID NCT01260883 for patient sigir-201418 not found in model results.
+Warning: Trial ID NCT00557219 for patient sigir-201418 not found in model results.
+Warning: Trial ID NCT00256529 for patient sigir-201419 not found in model results.
+Warning: Trial ID NCT02509286 for patient sigir-201419 not found in model results.
+Warning: Trial ID NCT02255487 for patient sigir-201420 not found in model results.
+Warning: Trial ID NCT01594385 for patient sigir-201420 not found in model results.
+Warning: Trial ID NCT00997100 for patient sigir-201421 not found in model results.
+Warning: Trial ID NCT01520155 for patient sigir-201421 not found in model results.
+Warning: Trial ID NCT00723788 for patient sigir-201422 not found in model results.
+Warning: Trial ID NCT00236912 for patient sigir-201422 not found in model results.
+Warning: Trial ID NCT02219360 for patient sigir-201423 not found in model results.
+Warning: Trial ID NCT00170222 for patient sigir-201423 not found in model results.
+Warning: Trial ID NCT02229695 for patient sigir-201424 not found in model results.
+Warning: Trial ID NCT01771861 for patient sigir-201424 not found in model results.
+Warning: Trial ID NCT00282269 for patient sigir-201425 not found in model results.
+Warning: Trial ID NCT02378311 for patient sigir-201425 not found in model results.
+Warning: Patient ID sigir-201426 not found in model results.
+Warning: Patient ID sigir-201426 not found in model results.
+Warning: Trial ID NCT01187901 for patient sigir-201427 not found in model results.
+Warning: Trial ID NCT01713881 for patient sigir-201427 not found in model results.
+Warning: Trial ID NCT01978834 for patient sigir-201429 not found in model results.
+Warning: Trial ID NCT00703417 for patient sigir-201429 not found in model results.
+Warning: Trial ID NCT02273232 for patient sigir-201430 not found in model results.
+Warning: Trial ID NCT00721006 for patient sigir-201430 not found in model results.
+Warning: Trial ID NCT01142245 for patient sigir-20151 not found in model results.
+Warning: Trial ID NCT00843063 for patient sigir-20151 not found in model results.
+Warning: Trial ID NCT02532452 for patient sigir-20152 not found in model results.
+Warning: Trial ID NCT00034437 for patient sigir-20152 not found in model results.
+Warning: Trial ID NCT01326507 for patient sigir-20153 not found in model results.
+Warning: Trial ID NCT01139632 for patient sigir-20153 not found in model results.
+Warning: Trial ID NCT01243255 for patient sigir-20154 not found in model results.
+Warning: Trial ID NCT00844987 for patient sigir-20154 not found in model results.
+Warning: Trial ID NCT02407106 for patient sigir-20155 not found in model results.
+Warning: Trial ID NCT02118818 for patient sigir-20155 not found in model results.
+Warning: Trial ID NCT02375451 for patient sigir-20156 not found in model results.
+Warning: Trial ID NCT01717352 for patient sigir-20156 not found in model results.
+Warning: Trial ID NCT01632319 for patient sigir-20157 not found in model results.
+Warning: Trial ID NCT02633449 for patient sigir-20157 not found in model results.
+Warning: Trial ID NCT02562040 for patient sigir-20158 not found in model results.
+Warning: Trial ID NCT00393913 for patient sigir-20158 not found in model results.
+Warning: Trial ID NCT01766830 for patient sigir-20159 not found in model results.
+Warning: Trial ID NCT02340533 for patient sigir-201510 not found in model results.
+Warning: Trial ID NCT01377519 for patient sigir-201510 not found in model results.
+Warning: Trial ID NCT01862510 for patient sigir-201511 not found in model results.
+Warning: Trial ID NCT01197183 for patient sigir-201511 not found in model results.
+Warning: Trial ID NCT02467309 for patient sigir-201512 not found in model results.
+Warning: Trial ID NCT02418169 for patient sigir-201512 not found in model results.
+Warning: Trial ID NCT01255670 for patient sigir-201513 not found in model results.
+Warning: Trial ID NCT00315042 for patient sigir-201513 not found in model results.
+Warning: Trial ID NCT01308112 for patient sigir-201514 not found in model results.
+Warning: Trial ID NCT00827463 for patient sigir-201514 not found in model results.
+Warning: Trial ID NCT00932425 for patient sigir-201515 not found in model results.
+Warning: Trial ID NCT01550588 for patient sigir-201515 not found in model results.
+Warning: Trial ID NCT00930826 for patient sigir-201516 not found in model results.
+Warning: Trial ID NCT00839124 for patient sigir-201516 not found in model results.
+Warning: Trial ID NCT01231945 for patient sigir-201517 not found in model results.
+Warning: Trial ID NCT01446198 for patient sigir-201517 not found in model results.
+Warning: Trial ID NCT00344513 for patient sigir-201518 not found in model results.
+Warning: Trial ID NCT00534066 for patient sigir-201518 not found in model results.
+Warning: Trial ID NCT02213809 for patient sigir-201519 not found in model results.
+Warning: Trial ID NCT00806091 for patient sigir-201519 not found in model results.
+Warning: Trial ID NCT00182832 for patient sigir-201520 not found in model results.
+Warning: Trial ID NCT00880347 for patient sigir-201520 not found in model results.
+Warning: Trial ID NCT02105714 for patient sigir-201521 not found in model results.
+Warning: Trial ID NCT01959048 for patient sigir-201521 not found in model results.
+Warning: Trial ID NCT02534727 for patient sigir-201522 not found in model results.
+Warning: Trial ID NCT01207128 for patient sigir-201522 not found in model results.
+Warning: Trial ID NCT00084240 for patient sigir-201523 not found in model results.
+Warning: Trial ID NCT02334514 for patient sigir-201523 not found in model results.
+Warning: Trial ID NCT00711399 for patient sigir-201524 not found in model results.
+Warning: Trial ID NCT00540072 for patient sigir-201524 not found in model results.
+
+--- Evaluation Summary ---
+Total Patient-Criterion Pairs Evaluated: 26
+Criterion Eligibility Accuracy: 0.7308
+
+Sentence Location Metrics (Macro-Averages):
+  Precision: 0.4467
+  Recall:    0.5000
+  F1-Score:  0.4587
+--- End of Summary ---
+
+Confusion Matrix for Eligibility Predictions:
+                        excluded  included  ...  not excluded  not included
+excluded                       1         0  ...             0             0
+included                       0         2  ...             0             0
+not enough information         0         2  ...             1             2
+not excluded                   1         0  ...            12             0
+not included                   0         0  ...             0             1
+
+[5 rows x 5 columns]
+
+Classification Report for Eligibility Predictions:
+                        precision    recall  f1-score   support
+
+              excluded       0.50      1.00      0.67         1
+              included       0.50      1.00      0.67         2
+not enough information       1.00      0.38      0.55         8
+          not excluded       0.92      0.92      0.92        13
+          not included       0.33      1.00      0.50         1
+
+              accuracy                           0.76        25
+             macro avg       0.65      0.86      0.66        25
+          weighted avg       0.87      0.76      0.75        25
+

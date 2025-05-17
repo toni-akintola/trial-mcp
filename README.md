@@ -183,3 +183,96 @@ If you use the TREC cohorts, please cite the original dataset papers by:
   year={2022}
 }
 ```
+
+# TrialGPT+MCP Implementation
+
+This project integrates TrialGPT with a FastMCP server to provide powerful tools for clinical trial matching.
+
+## Project Structure
+
+- `trialgpt_matching/`: Original TrialGPT matching logic.
+- `trialgpt_ranking/`: Original TrialGPT ranking logic.
+- `main.py`: Main entry point, **now also acts as the MCP server with integrated Bio_ClinicalBERT for NER.**
+- `design.md`: The design document for MCP integration.
+- `mcp_client_tester.py`: A script to test the MCP server tools (requires generated client stubs).
+- `requirements.txt`: Python dependencies.
+
+## Setup and Running
+
+### 1. Prerequisites
+
+- Python 3.8+
+- Pip (Python package installer)
+- Git
+
+### 2. Installation
+
+Clone the repository and install dependencies:
+
+```bash
+git clone <your-repo-url>
+cd <your-repo-name>
+pip install -r requirements.txt
+```
+
+You will need to install `fastmcp` and its dependencies, including gRPC tools for client generation.
+Additionally, `transformers` (for Bio_ClinicalBERT) and `torch` are now required.
+```bash
+pip install fastmcp requests google-api-python-client # google-api for Struct if needed by client
+pip install grpcio grpcio-tools betterproto # For FastMCP server and client stub generation
+pip install transformers torch # For Hugging Face Transformers and PyTorch backend
+```
+(Note: `hfc.fabric` for Hyperledger is mocked, so full Fabric setup is not needed for the current server version.)
+
+### 3. Generate MCP Client Stubs (Important Step)
+
+The `main.py` (acting as `mcp_server.py`) uses FastMCP, which dynamically generates gRPC services based on your Python tool definitions. To create a Python client to interact with these services, you need to:
+
+**a. Obtain the .proto definition:**
+   - When you run `main.py` (the MCP server) with FastMCP, it might save the generated `.proto` file (e.g., `mcp.proto` or `fastmcp_service.proto`) in the current directory or a specified output directory. Check the FastMCP documentation or server startup logs for its location.
+   - Alternatively, FastMCP might have a command to dump the .proto definition.
+
+**b. Compile the .proto file:**
+   - Once you have the `.proto` file (let's assume it's named `mcp_service.proto`), use `protoc` with the `betterproto` plugin (as FastMCP v2 often uses it) to generate the Python client stubs:
+     ```bash
+     python -m grpc_tools.protoc -I. --python_betterproto_out=. mcp_service.proto
+     ```
+     This will generate a Python file like `mcp_service_pb2.py` (the name depends on the package and service definition in the proto file). This file contains the client stub and message classes. You'll need to move this generated file into your project where it can be imported by `mcp_client_tester.py`.
+
+### 4. Running the MCP Server
+
+Open a terminal and run:
+```bash
+python main.py
+```
+The server should start and listen on `0.0.0.0:50051` (or the configured port).
+**Note:** The first time you run this, it will attempt to download the Bio_ClinicalBERT model from Hugging Face, which can be several hundred megabytes and may take some time.
+
+### 5. Testing the MCP Server with the Python Client
+
+**a. Update Client Imports:**
+   - Modify `mcp_client_tester.py` to import the correct generated stub and message classes from the file created in step 3b (e.g., `from mcp_service_pb2 import McpStub, SymptomToBiomarkerRequest, ...`).
+
+**b. Run the Client Tester:**
+   - Once the server is running and the client script is updated with correct imports, open another terminal and run:
+     ```bash
+     python mcp_client_tester.py
+     ```
+   This script will attempt to call each tool on the MCP server.
+
+### 6. (Next Steps) Integrating MCP Client into TrialGPT
+
+After the MCP server and client are tested:
+- Create a dedicated MCP client module/class within the TrialGPT application.
+- Modify `trialgpt_matching/TrialGPT.py` and `trialgpt_ranking/TrialGPT.py` to use this MCP client for functionalities like `symptom_to_biomarker`, fetching trial data, etc., instead of direct LLM calls or static data.
+
+## Tool Details (from main.py)
+
+- `symptom_to_biomarker(text: str) -> dict`: Now uses Bio_ClinicalBERT for NER.
+- `query_clinicaltrials(expr: str, fields: list[str] | None = None) -> dict`
+- `fetch_irb_protocol(protocol_id: str) -> dict`
+- `enrich_with_drugbank(biomarker: str) -> list[dict]`
+- `query_opentargets(target: str) -> dict`
+- `record_audit(entry: dict) -> str`
+
+Refer to `design.md` for more details on the intended functionality of each tool.
