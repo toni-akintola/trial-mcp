@@ -156,11 +156,13 @@ def get_trialgpt_matching_result(
         return ""
 
 
-def main():
+def trialgpt_matching(trial: dict, patient: str, model: str):
     results = {}
 
     # doing inclusions and exclusions in separate prompts
     for inc_exc in ["inclusion", "exclusion"]:
+        # get_matching_prompt expects trial_info, inc_exc, patient
+        # The 'trial' object passed to this function is the trial_info
         system_prompt, user_prompt = get_matching_prompt(trial, inc_exc, patient)
 
         messages = [
@@ -168,24 +170,14 @@ def main():
             {"role": "user", "content": user_prompt},
         ]
 
-        # Call the updated get_trialgpt_matching_result function
-        # Ensure 'model' variable is defined in this scope or passed to main()
-        # For now, assuming 'model' is available in this scope as it was in the original client.chat.completions.create call
-        # Pass necessary parameters. Others will use defaults.
         message = get_trialgpt_matching_result(
-            messages=messages,
-            model=model,  # This 'model' variable needs to be defined in main's scope
-            temperature=0.0,  # Explicitly pass, as it was in the original call
+            messages=messages, model=model, temperature=0.0
         )
-
-        # The stripping of backticks and "json" is now done inside get_trialgpt_matching_result
-        # So, no need to do it here again.
 
         try:
             results[inc_exc] = json.loads(message)
         except:
-            # If json.loads fails, store the raw message (original behavior)
-            results[inc_exc] = message
+            results[inc_exc] = message  # Store raw message if JSON parsing fails
 
     return results
 

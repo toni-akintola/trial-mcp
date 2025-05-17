@@ -66,36 +66,28 @@ def convert_criteria_pred_to_string(
     return output
 
 
-def convert_pred_to_prompt(
-    patient: str,
-    pred: dict,
-    trial_info: dict,
-) -> str:
-    """Convert the prediction to a prompt string."""
-    # get the trial string
-    trial = f"Title: {trial_info['brief_title']}\n"
-    trial += f"Target conditions: {', '.join(trial_info['diseases_list'])}\n"
-    trial += f"Summary: {trial_info['brief_summary']}"
+def get_ranking_llm_prompts(
+    patient_note: str, criteria_pred_string: str, trial_info: dict
+):
+    """Prepares the system and user prompts for the ranking LLM call."""
+    # get the trial string using parts of trial_info
+    trial_description = f"Title: {trial_info.get('brief_title', '')}\n"
+    trial_description += (
+        f"Target conditions: {', '.join(trial_info.get('diseases_list', []))}\n"
+    )
+    trial_description += f"Summary: {trial_info.get('brief_summary', '')}"
 
-    # then get the prediction strings
-    pred = convert_criteria_pred_to_string(pred, trial_info)
+    system_prompt = "You are a helpful assistant for clinical trial recruitment. You will be given a patient note, a clinical trial, and the patient eligibility predictions for each criterion.\n"
+    system_prompt += "Your task is to output two scores, a relevance score (R) and an eligibility score (E), between the patient and the clinical trial.\n"
+    system_prompt += "First explain the consideration for determining patient-trial relevance. Predict the relevance score R (0~100), which represents the overall relevance between the patient and the clinical trial. R=0 denotes the patient is totally irrelevant to the clinical trial, and R=100 denotes the patient is exactly relevant to the clinical trial.\n"
+    system_prompt += "Then explain the consideration for determining patient-trial eligibility. Predict the eligibility score E (-R~R), which represents the patient's eligibility to the clinical trial. Note that -R <= E <= R (the absolute value of eligibility cannot be higher than the relevance), where E=-R denotes that the patient is ineligible (not included by any inclusion criteria, or excluded by all exclusion criteria), E=R denotes that the patient is eligible (included by all inclusion criteria, and not excluded by any exclusion criteria), E=0 denotes the patient is neutral (i.e., no relevant information for all inclusion and exclusion criteria).\n"
+    system_prompt += 'Please output a JSON dict formatted as Dict{"relevance_explanation": Str, "relevance_score_R": Float, "eligibility_explanation": Str, "eligibility_score_E": Float}.'
 
-    # construct the prompt
-    prompt = "You are a helpful assistant for clinical trial recruitment. You will be given a patient note, a clinical trial, and the patient eligibility predictions for each criterion.\n"
-    prompt += "Your task is to output two scores, a relevance score (R) and an eligibility score (E), between the patient and the clinical trial.\n"
-    prompt += "First explain the consideration for determining patient-trial relevance. Predict the relevance score R (0~100), which represents the overall relevance between the patient and the clinical trial. R=0 denotes the patient is totally irrelevant to the clinical trial, and R=100 denotes the patient is exactly relevant to the clinical trial.\n"
-    prompt += "Then explain the consideration for determining patient-trial eligibility. Predict the eligibility score E (-R~R), which represents the patient's eligibility to the clinical trial. Note that -R <= E <= R (the absolute value of eligibility cannot be higher than the relevance), where E=-R denotes that the patient is ineligible (not included by any inclusion criteria, or excluded by all exclusion criteria), E=R denotes that the patient is eligible (included by all inclusion criteria, and not excluded by any exclusion criteria), E=0 denotes the patient is neutral (i.e., no relevant information for all inclusion and exclusion criteria).\n"
-    prompt += 'Please output a JSON dict formatted as Dict{"relevance_explanation": Str, "relevance_score_R": Float, "eligibility_explanation": Str, "eligibility_score_E": Float}.'
-
-    user_prompt = "Here is the patient note:\n"
-    user_prompt += patient + "\n\n"
-    user_prompt += "Here is the clinical trial description:\n"
-    user_prompt += trial + "\n\n"
-    user_prompt += "Here are the criterion-level eligibility prediction:\n"
-    user_prompt += pred + "\n\n"
+    user_prompt = f"Here is the patient note:\n{patient_note}\n\n"
+    user_prompt += f"Here is the clinical trial description:\n{trial_description}\n\n"
+    user_prompt += f"Here are the criterion-level eligibility prediction:\n{criteria_pred_string}\n\n"
     user_prompt += "Plain JSON output:"
-
-    return prompt, user_prompt
+    return system_prompt, user_prompt
 
 
 def get_trialgpt_ranking_result(
@@ -139,8 +131,14 @@ def get_trialgpt_ranking_result(
         return ""
 
 
-def main(patient_note, criteria_pred_string, model):
-    system_prompt, user_prompt = convert_pred_to_prompt(
+def trialgpt_aggregation(
+    patient_note: str, trial_results: dict, trial_info: dict, model: str
+):
+    # Convert the structured trial_results (dict) from matching phase into a string representation
+    criteria_pred_string = convert_criteria_pred_to_string(trial_results, trial_info)
+
+    # Get prompts for the LLM call, now passing trial_info as well for full context if needed by get_ranking_llm_prompts
+    system_prompt, user_prompt = get_ranking_llm_prompts(
         patient_note, criteria_pred_string, trial_info
     )
 
@@ -149,16 +147,17 @@ def main(patient_note, criteria_pred_string, model):
         {"role": "user", "content": user_prompt},
     ]
 
-    # Call the new Anthropic wrapper function
-    message = get_trialgpt_ranking_result(
-        messages=messages,
-        model=model,
-        temperature=0.0,  # Explicitly pass, as in original logic
+    message_content = get_trialgpt_ranking_result(
+        messages=messages, model=model, temperature=0.0
     )
 
-    message = message.strip("`").strip("json")
+    # Stripping is now expected to be done by the caller if needed,
+    # or ensure get_trialgpt_ranking_result does it consistently.
+    # For now, retaining the stripping here as per original structure for this function.
+    message_content = message_content.strip("`").strip("json")
 
     try:
-        return json.loads(message)
-    except:
-        return message
+        return json.loads(message_content)
+    except json.JSONDecodeError:
+        # If JSON loading fails, return the raw string (original behavior)
+        return message_content
