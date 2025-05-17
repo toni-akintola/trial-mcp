@@ -8,8 +8,13 @@ import json
 from nltk.tokenize import sent_tokenize
 import os
 import sys
-
 from TrialGPT import trialgpt_matching
+import concurrent.futures
+import time
+
+# --- Configuration for Parallelization ---
+MAX_WORKERS = 5  # Number of concurrent API calls for matching
+# -----------------------------------------
 
 
 def load_patient_queries(queries_file_path):
@@ -20,6 +25,25 @@ def load_patient_queries(queries_file_path):
             entry = json.loads(line)
             patients[entry["_id"]] = entry["text"]
     return patients
+
+
+def process_trial_for_patient_wrapper(
+    patient_id, nctid, trial_details, patient_text_with_sent_ids, model_name
+):
+    """Wrapper function to call trialgpt_matching and handle its result/errors for a single trial."""
+    print(f"Starting matching for patient {patient_id}, trial {nctid}...")
+    try:
+        # trialgpt_matching expects the full trial dict and patient text
+        matching_results = trialgpt_matching(
+            trial_details, patient_text_with_sent_ids, model_name
+        )
+        print(f"Finished matching for patient {patient_id}, trial {nctid}.")
+        return patient_id, nctid, matching_results
+    except Exception as e:
+        print(
+            f"Error during trialgpt_matching for patient {patient_id}, trial {nctid}: {e}"
+        )
+        return patient_id, nctid, {"error": f"Exception in trialgpt_matching: {str(e)}"}
 
 
 if __name__ == "__main__":
@@ -71,60 +95,85 @@ if __name__ == "__main__":
     else:
         output = {}
 
-    for patient_id, nctids in retrieved_data.items():
-        if patient_id not in patient_id_to_text:
-            print(
-                f"Warning: Patient text not found for patient_id {patient_id}. Skipping."
+    # Using ThreadPoolExecutor for I/O bound tasks (API calls)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        future_to_trial_info = {}
+
+        for patient_id, nctids in retrieved_data.items():
+            if patient_id not in patient_id_to_text:
+                print(
+                    f"Warning: Patient text not found for patient_id {patient_id}. Skipping submit."
+                )
+                continue
+
+            patient_full_text = patient_id_to_text[patient_id]
+            sents = sent_tokenize(patient_full_text)
+            sents.append(
+                "The patient will provide informed consent, and will comply with the trial protocol without any practical issues."
             )
-            continue
+            patient_text_with_sent_ids = "\n".join(
+                [f"{idx}. {sent}" for idx, sent in enumerate(sents)]
+            )
 
-        patient_full_text = patient_id_to_text[patient_id]
-        sents = sent_tokenize(patient_full_text)
-        # Append consent and compliance statement as in original script
-        sents.append(
-            "The patient will provide informed consent, and will comply with the trial protocol without any practical issues."
-        )
-        patient_text_with_sent_ids = "\n".join(
-            [f"{idx}. {sent}" for idx, sent in enumerate(sents)]
-        )
+            if patient_id not in output:
+                output[patient_id] = {}
 
-        if patient_id not in output:
-            output[patient_id] = {}
+            for nctid in nctids:
+                if nctid not in trial_info_master:
+                    print(
+                        f"Warning: Trial information not found for NCTID {nctid} (patient {patient_id}). Skipping submit."
+                    )
+                    output[patient_id][nctid] = {
+                        "error": "Trial info not found in master list"
+                    }
+                    continue
 
-        for nctid in nctids:
-            if nctid not in trial_info_master:
-                print(
-                    f"Warning: Trial information not found for NCTID {nctid} (patient {patient_id}). Skipping."
+                if nctid in output[patient_id]:
+                    print(
+                        f"Skipping submission for already processed trial {nctid} for patient {patient_id}"
+                    )
+                    continue
+
+                trial_details = trial_info_master[nctid]
+                trial_details["NCTID"] = nctid
+
+                # Submit the task to the executor
+                future = executor.submit(
+                    process_trial_for_patient_wrapper,
+                    patient_id,
+                    nctid,
+                    trial_details,
+                    patient_text_with_sent_ids,
+                    model_name,
                 )
-                continue
+                future_to_trial_info[future] = (patient_id, nctid)
 
-            # Already processed
-            if nctid in output[patient_id]:
-                print(
-                    f"Skipping already processed trial {nctid} for patient {patient_id}"
-                )
-                continue
-
-            trial_details = trial_info_master[nctid]
-            # Ensure 'NCTID' is in trial_details if not already, for consistency, though trial_info_master is keyed by it.
-            trial_details["NCTID"] = nctid
-
-            print(f"Processing patient {patient_id}, trial {nctid}...")
+        # Process completed futures as they finish
+        for future in concurrent.futures.as_completed(future_to_trial_info):
+            p_id, trial_nctid = future_to_trial_info[future]
             try:
-                # trialgpt_matching expects the full trial dict and patient text
-                matching_results = trialgpt_matching(
-                    trial_details, patient_text_with_sent_ids, model_name
+                _, _, result_data = (
+                    future.result()
+                )  # patient_id, nctid, matching_results
+                if p_id not in output:
+                    output[p_id] = {}
+                output[p_id][trial_nctid] = result_data
+            except Exception as exc:
+                print(
+                    f"Trial {trial_nctid} for patient {p_id} generated an exception: {exc}"
                 )
-                output[patient_id][nctid] = matching_results
-
-                # Save incrementally
+                if p_id not in output:
+                    output[p_id] = {}
+                output[p_id][trial_nctid] = {
+                    "error": f"Future generated exception: {str(exc)}"
+                }
+            finally:
+                # Save incrementally after each result is processed
+                # This is important in case of interruptions
                 with open(output_path, "w") as f:
                     json.dump(output, f, indent=4)
-            except Exception as e:
-                print(f"Error processing patient {patient_id}, trial {nctid}: {e}")
-                output[patient_id][nctid] = {"error": str(e)}  # Log error in output
-                with open(output_path, "w") as f:  # Save error state
-                    json.dump(output, f, indent=4)
-                continue
-        print(f"Finished processing patient {patient_id}.")
-    print(f"All processing finished. Results saved to {output_path}")
+                print(
+                    f"Incrementally saved results to {output_path} after processing trial {trial_nctid} for patient {p_id}"
+                )
+
+    print(f"All processing finished. Final results saved to {output_path}")

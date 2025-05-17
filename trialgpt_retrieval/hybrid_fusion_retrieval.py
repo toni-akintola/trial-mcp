@@ -17,6 +17,20 @@ import torch
 from transformers import AutoTokenizer, AutoModel
 import argparse
 
+import nltk
+
+nltk.download("punkt", quiet=True)
+nltk.download("averaged_perceptron_tagger", quiet=True)
+
+# Determine device for PyTorch
+if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+    device = torch.device("mps")
+elif torch.cuda.is_available():  # Fallback for other systems if CUDA were present
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
+print(f"Using PyTorch device: {device}")
+
 
 def get_bm25_corpus_index(corpus):
     corpus_path = os.path.join(f"trialgpt_retrieval/bm25_corpus_{corpus}.json")
@@ -70,7 +84,7 @@ def get_medcpt_corpus_index(corpus):
         embeds = []
         corpus_nctids = []
 
-        model = AutoModel.from_pretrained("ncbi/MedCPT-Article-Encoder").to("cuda")
+        model = AutoModel.from_pretrained("ncbi/MedCPT-Article-Encoder").to(device)
         tokenizer = AutoTokenizer.from_pretrained("ncbi/MedCPT-Article-Encoder")
 
         with open(f"dataset/{corpus}/corpus.jsonl", "r") as f:
@@ -90,7 +104,7 @@ def get_medcpt_corpus_index(corpus):
                         padding=True,
                         return_tensors="pt",
                         max_length=512,
-                    ).to("cuda")
+                    ).to(device)
 
                     embed = model(**encoded).last_hidden_state[:, 0, :]
 
@@ -169,7 +183,7 @@ if __name__ == "__main__":
     medcpt, medcpt_nctids = get_medcpt_corpus_index(corpus)
 
     # loading the query encoder for MedCPT
-    model = AutoModel.from_pretrained("ncbi/MedCPT-Query-Encoder").to("cuda")
+    model = AutoModel.from_pretrained("ncbi/MedCPT-Query-Encoder").to(device)
     tokenizer = AutoTokenizer.from_pretrained("ncbi/MedCPT-Query-Encoder")
 
     # then conduct the searches, saving top N (e.g. 2000)
@@ -219,7 +233,7 @@ if __name__ == "__main__":
                         padding=True,
                         return_tensors="pt",
                         max_length=256,
-                    ).to("cuda")
+                    ).to(device)
 
                     # encode the queries (use the [CLS] last hidden states as the representations)
                     embeds = model(**encoded).last_hidden_state[:, 0, :].cpu().numpy()

@@ -25,6 +25,11 @@ def convert_criteria_pred_to_string(
     output = ""
 
     for inc_exc in ["inclusion", "exclusion"]:
+        if inc_exc not in prediction or not isinstance(prediction[inc_exc], dict):
+            output += f"Note: {inc_exc.capitalize()} criteria data is not in the expected dictionary format or is missing.\n"
+            if inc_exc in prediction:
+                output += f"  Raw {inc_exc} data: {str(prediction[inc_exc])[:200]}\n"  # Log a snippet of the raw data
+            continue  # Skip processing for this inc_exc type
 
         # first get the idx2criterion dict
         idx2criterion = {}
