@@ -98,19 +98,20 @@ def get_ranking_llm_prompts(
 def get_trialgpt_ranking_result(
     messages,
     model,
-    max_tokens=1024,  # Default from OpenAI, adjust if needed
+    max_tokens=8192,  # Default from OpenAI, adjust if needed
     temperature=0.0,
     # Anthropic doesn't use top_p, frequency_penalty, presence_penalty in the same way for messages.create
 ):
     """Get the TrialGPT-Ranking result using the Anthropic API."""
 
     # Map OpenAI model names to Anthropic model names
-    if model == "gpt-4-turbo":
-        anthropic_model = "claude-3-opus-20240229"
-    elif model == "gpt-35-turbo":
-        anthropic_model = "claude-3-sonnet-20240229"
-    else:
-        anthropic_model = model
+    # if model == "gpt-4-turbo":
+    #     anthropic_model = "claude-3-opus-20240229"
+    # elif model == "gpt-35-turbo":
+    #     anthropic_model = "claude-3-sonnet-20240229"
+    # else:
+    #     anthropic_model = model
+    anthropic_model = model  # Use the model parameter directly
 
     try:
         system_prompt = None

@@ -1783,7 +1783,9 @@ dependencies = [
     { name = "faiss-cpu" },
     { name = "fastmcp" },
     { name = "nltk" },
+    { name = "pandas" },
     { name = "rank-bm25" },
+    { name = "scikit-learn" },
     { name = "seaborn" },
 ]
 
@@ -1795,7 +1797,9 @@ requires-dist = [
     { name = "faiss-cpu", specifier = ">=1.11.0" },
     { name = "fastmcp", specifier = ">=2.3.4" },
     { name = "nltk", specifier = ">=3.9.1" },
+    { name = "pandas", specifier = ">=2.2.3" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
+    { name = "scikit-learn", specifier = ">=1.6.1" },
     { name = "seaborn", specifier = ">=0.13.2" },
 ]
 

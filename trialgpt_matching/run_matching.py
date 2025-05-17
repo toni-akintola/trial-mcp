@@ -47,15 +47,13 @@ def process_trial_for_patient_wrapper(
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print(
-            "Usage: python run_matching.py <corpus> <model> <retrieved_nctids_file_path>"
-        )
+    if len(sys.argv) < 3:  # Adjusted for one less argument
+        print("Usage: python run_matching.py <corpus> <retrieved_nctids_file_path>")
         sys.exit(1)
 
     corpus = sys.argv[1]
-    model_name = sys.argv[2]  # Renamed from 'model' to avoid conflict with module
-    retrieved_nctids_file_path = sys.argv[3]
+    model_name = "claude-3-7-sonnet-latest"  # Hardcoded model name
+    retrieved_nctids_file_path = sys.argv[2]  # Adjusted index
 
     # Load patient notes
     patient_queries_path = f"dataset/{corpus}/queries.jsonl"

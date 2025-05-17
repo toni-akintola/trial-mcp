@@ -109,15 +109,6 @@ def get_trialgpt_matching_result(
 ):
     """Get the TrialGPT-Matching result using the Anthropic API."""
 
-    # Map OpenAI model names to Anthropic model names
-    if model == "gpt-4-turbo":
-        anthropic_model = "claude-3-opus-20240229"
-    elif model == "gpt-35-turbo":
-        anthropic_model = "claude-3-sonnet-20240229"
-    else:
-        # Default to the provided model name or raise an error
-        anthropic_model = model
-
     try:
         # Separate system prompt if present, as Anthropic handles it differently
         system_prompt = None
@@ -129,7 +120,7 @@ def get_trialgpt_matching_result(
             user_prompts = messages
 
         completion = client.messages.create(
-            model=anthropic_model,
+            model=model,
             max_tokens=max_tokens,
             temperature=temperature,
             system=system_prompt,  # Pass system prompt via the 'system' parameter
@@ -158,6 +149,7 @@ def get_trialgpt_matching_result(
 
 def trialgpt_matching(trial: dict, patient: str, model: str):
     results = {}
+    MAX_MATCHING_TOKENS = 8192  # Define a higher max_tokens for matching
 
     # doing inclusions and exclusions in separate prompts
     for inc_exc in ["inclusion", "exclusion"]:
@@ -171,13 +163,34 @@ def trialgpt_matching(trial: dict, patient: str, model: str):
         ]
 
         message = get_trialgpt_matching_result(
-            messages=messages, model=model, temperature=0.0
+            messages=messages,
+            model=model,
+            temperature=0.0,
+            max_tokens=MAX_MATCHING_TOKENS,  # Pass higher max_tokens
         )
 
         try:
             results[inc_exc] = json.loads(message)
-        except:
-            results[inc_exc] = message  # Store raw message if JSON parsing fails
+        except json.JSONDecodeError as e:  # More specific exception
+            trial_id_for_log = trial.get(
+                "NCTID", trial.get("nct_id", "UnknownNCTID")
+            )  # Attempt to get trial ID for logging
+            print(
+                f"Warning: JSONDecodeError for {inc_exc} criteria in trial {trial_id_for_log}. Error: {e}. Raw message snippet: {message[:200]}..."
+            )
+            results[inc_exc] = {
+                "error_json_parsing": str(e),
+                "raw_response_snippet": message[:200],
+            }  # Store an error dict
+        except Exception as e_gen:  # Catch any other unexpected error during parsing
+            trial_id_for_log = trial.get("NCTID", trial.get("nct_id", "UnknownNCTID"))
+            print(
+                f"Warning: Unexpected error parsing {inc_exc} criteria for trial {trial_id_for_log}. Error: {e_gen}. Raw message snippet: {message[:200]}..."
+            )
+            results[inc_exc] = {
+                "error_unexpected_parsing": str(e_gen),
+                "raw_response_snippet": message[:200],
+            }
 
     return results
 

@@ -24,34 +24,40 @@ def get_matching_score(matching):
     no_info_exc = 0
 
     # first count inclusions
-    for criteria, info in matching["inclusion"].items():
-
-        if len(info) != 3:
-            continue
-
-        if info[2] == "included":
-            included += 1
-        elif info[2] == "not included":
-            not_inc += 1
-        elif info[2] == "not applicable":
-            na_inc += 1
-        elif info[2] == "not enough information":
-            no_info_inc += 1
+    if "inclusion" in matching and isinstance(matching["inclusion"], dict):
+        for criteria, info in matching["inclusion"].items():
+            if len(info) != 3:
+                continue
+            if info[2] == "included":
+                included += 1
+            elif info[2] == "not included":
+                not_inc += 1
+            elif info[2] == "not applicable":
+                na_inc += 1
+            elif info[2] == "not enough information":
+                no_info_inc += 1
+    else:
+        print(
+            f"Warning: 'inclusion' data in matching result is not a dictionary or is missing. Skipping inclusion count. Data: {str(matching.get('inclusion'))[:200]}"
+        )
 
     # then count exclusions
-    for criteria, info in matching["exclusion"].items():
-
-        if len(info) != 3:
-            continue
-
-        if info[2] == "excluded":
-            excluded += 1
-        elif info[2] == "not excluded":
-            not_exc += 1
-        elif info[2] == "not applicable":
-            na_exc += 1
-        elif info[2] == "not enough information":
-            no_info_exc += 1
+    if "exclusion" in matching and isinstance(matching["exclusion"], dict):
+        for criteria, info in matching["exclusion"].items():
+            if len(info) != 3:
+                continue
+            if info[2] == "excluded":
+                excluded += 1
+            elif info[2] == "not excluded":
+                not_exc += 1
+            elif info[2] == "not applicable":
+                na_exc += 1
+            elif info[2] == "not enough information":
+                no_info_exc += 1
+    else:
+        print(
+            f"Warning: 'exclusion' data in matching result is not a dictionary or is missing. Skipping exclusion count. Data: {str(matching.get('exclusion'))[:200]}"
+        )
 
     # get the matching score
     score = 0

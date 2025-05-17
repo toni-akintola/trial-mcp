@@ -76,13 +76,14 @@ After retrieving the candidate clinical trials with TrialGPT-Retrieval, the next
 One can run the following commands to use TrialGPT-Matching, and the results will be saved in `./results/`:
 
 ```bash
-# syntax: python trialgpt_matching/run_matching.py ${corpus} ${model}
+# syntax: python trialgpt_matching/run_matching.py ${corpus} ${retrieved_nctids_file_path}
 # ${corpus} can be sigir, trec_2021, and trec_2022
-# ${model} should be an Anthropic model name (e.g., claude-3-opus-20240229)
+# ${retrieved_nctids_file_path} is the path to the retrieved NCTIDs (e.g. ./dataset/{corpus}/retrieved_trials.json or results/retrieved_nctids_...json)
+# The model is now hardcoded to "claude-3-7-sonnet-latest"
 # examples below
-python trialgpt_matching/run_matching.py sigir claude-3-opus-20240229
-python trialgpt_matching/run_matching.py trec_2021 claude-3-opus-20240229
-python trialgpt_matching/run_matching.py trec_2022 claude-3-opus-20240229
+python trialgpt_matching/run_matching.py sigir ./dataset/sigir/retrieved_trials.json
+python trialgpt_matching/run_matching.py trec_2021 ./dataset/trec_2021/retrieved_trials.json
+python trialgpt_matching/run_matching.py trec_2022 ./dataset/trec_2022/retrieved_trials.json
 ```
 
 ## TrialGPT-Ranking
@@ -90,22 +91,22 @@ python trialgpt_matching/run_matching.py trec_2022 claude-3-opus-20240229
 The final step is to use TrialGPT-Ranking to aggregate the criterion-level predictions into trial-level scores for ranking (component c in the figure). To get the LLM-aggregation scores for TrialGPT-Ranking, one can run the following commands. The results will be saved in `./results/`:
 
 ```bash
-# syntax: python trialgpt_ranking/run_aggregation.py ${corpus} ${model} ${matching_results_path}
+# syntax: python trialgpt_ranking/run_aggregation.py ${corpus} ${matching_results_path}
 # ${corpus} can be sigir, trec_2021, and trec_2022
-# ${model} should be an Anthropic model name (e.g., claude-3-opus-20240229)
 # ${matching_results_path} is the path to the TrialGPT matching results 
+# The model is now hardcoded to "claude-3-7-sonnet-latest"
 # example below (ensure matching results were generated using an Anthropic model)
-python trialgpt_ranking/run_aggregation.py sigir claude-3-opus-20240229 results/matching_results_sigir_claude-3-opus-20240229.json
+python trialgpt_ranking/run_aggregation.py sigir results/matching_results_sigir_claude-3-7-sonnet-latest.json 
 ```
 
 Once the matching results and the aggregation results are complete, one can run the following code to get the final ranking of clinical trials for each patient:
 
 ```bash
 # syntax: python trialgpt_ranking/rank_results.py ${matching_results_path} ${aggregation_results_path}
-# ${matching_results_path} is the path to the TrialGPT matching results 
-# ${aggregation_results_path} is the path to the aggregation results generated above
+# ${matching_results_path} is the path to the TrialGPT matching results (e.g. results/matching_results_sigir_claude-3-7-sonnet-latest.json)
+# ${aggregation_results_path} is the path to the aggregation results generated above (e.g. results/aggregation_results_sigir_claude-3-7-sonnet-latest.json)
 # example below (ensure results were generated using an Anthropic model)
-python trialgpt_ranking/rank_results.py results/matching_results_sigir_claude-3-opus-20240229.json results/aggregation_results_sigir_claude-3-opus-20240229.json
+python trialgpt_ranking/rank_results.py results/matching_results_sigir_claude-3-7-sonnet-latest.json results/aggregation_results_sigir_claude-3-7-sonnet-latest.json
 ```
 
 Example output:
