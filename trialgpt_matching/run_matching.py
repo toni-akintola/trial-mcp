@@ -11,54 +11,120 @@ import sys
 
 from TrialGPT import trialgpt_matching
 
+
+def load_patient_queries(queries_file_path):
+    """Loads patient queries from a JSONL file into a dict keyed by patient_id."""
+    patients = {}
+    with open(queries_file_path, "r") as f:
+        for line in f:
+            entry = json.loads(line)
+            patients[entry["_id"]] = entry["text"]
+    return patients
+
+
 if __name__ == "__main__":
+    if len(sys.argv) < 4:
+        print(
+            "Usage: python run_matching.py <corpus> <model> <retrieved_nctids_file_path>"
+        )
+        sys.exit(1)
+
     corpus = sys.argv[1]
-    model = sys.argv[2]
+    model_name = sys.argv[2]  # Renamed from 'model' to avoid conflict with module
+    retrieved_nctids_file_path = sys.argv[3]
 
-    dataset = json.load(open(f"dataset/{corpus}/retrieved_trials.json"))
+    # Load patient notes
+    patient_queries_path = f"dataset/{corpus}/queries.jsonl"
+    if not os.path.exists(patient_queries_path):
+        print(f"Error: Patient queries file not found at {patient_queries_path}")
+        sys.exit(1)
+    patient_id_to_text = load_patient_queries(patient_queries_path)
 
-    output_path = f"results/matching_results_{corpus}_{model}.json"
+    # Load retrieved NCTIDs
+    if not os.path.exists(retrieved_nctids_file_path):
+        print(f"Error: Retrieved NCTIDs file not found at {retrieved_nctids_file_path}")
+        sys.exit(1)
+    retrieved_data = json.load(
+        open(retrieved_nctids_file_path)
+    )  # Expected: Dict{patient_id: List[NCTID]}
 
-    # Dict{Str(patient_id): Dict{Str(label): Dict{Str(trial_id): Str(output)}}}
+    # Load master trial information
+    trial_info_path = "dataset/trial_info.json"
+    if not os.path.exists(trial_info_path):
+        print(f"Error: Trial info file not found at {trial_info_path}")
+        sys.exit(1)
+    trial_info_master = json.load(
+        open(trial_info_path)
+    )  # Expected: Dict{NCTID: trial_details}
+
+    # Derive output path from input retrieved_nctids_file_path to include sample suffix if present
+    base_retrieved_filename = os.path.basename(retrieved_nctids_file_path)
+    # Input: retrieved_nctids_gpt-4-turbo_sigir_sample10.json
+    # Output: matching_results_gpt-4-turbo_sigir_sample10.json
+    output_filename = base_retrieved_filename.replace(
+        "retrieved_nctids", "matching_results"
+    )
+    output_path = os.path.join("results", output_filename)
+
     if os.path.exists(output_path):
         output = json.load(open(output_path))
     else:
         output = {}
 
-    for instance in dataset:
-        # Dict{'patient': Str(patient), '0': Str(NCTID), ...}
-        patient_id = instance["patient_id"]
-        patient = instance["patient"]
-        sents = sent_tokenize(patient)
+    for patient_id, nctids in retrieved_data.items():
+        if patient_id not in patient_id_to_text:
+            print(
+                f"Warning: Patient text not found for patient_id {patient_id}. Skipping."
+            )
+            continue
+
+        patient_full_text = patient_id_to_text[patient_id]
+        sents = sent_tokenize(patient_full_text)
+        # Append consent and compliance statement as in original script
         sents.append(
             "The patient will provide informed consent, and will comply with the trial protocol without any practical issues."
         )
-        sents = [f"{idx}. {sent}" for idx, sent in enumerate(sents)]
-        patient = "\n".join(sents)
+        patient_text_with_sent_ids = "\n".join(
+            [f"{idx}. {sent}" for idx, sent in enumerate(sents)]
+        )
 
-        # initialize the patient id in the output
         if patient_id not in output:
-            output[patient_id] = {"0": {}, "1": {}, "2": {}}
+            output[patient_id] = {}
 
-        for label in ["2", "1", "0"]:
-            if label not in instance:
+        for nctid in nctids:
+            if nctid not in trial_info_master:
+                print(
+                    f"Warning: Trial information not found for NCTID {nctid} (patient {patient_id}). Skipping."
+                )
                 continue
 
-            for trial in instance[label]:
-                trial_id = trial["NCTID"]
+            # Already processed
+            if nctid in output[patient_id]:
+                print(
+                    f"Skipping already processed trial {nctid} for patient {patient_id}"
+                )
+                continue
 
-                # already calculated and cached
-                if trial_id in output[patient_id][label]:
-                    continue
+            trial_details = trial_info_master[nctid]
+            # Ensure 'NCTID' is in trial_details if not already, for consistency, though trial_info_master is keyed by it.
+            trial_details["NCTID"] = nctid
 
-                # in case anything goes wrong (e.g., API calling errors)
-                try:
-                    results = trialgpt_matching(trial, patient, model)
-                    output[patient_id][label][trial_id] = results
+            print(f"Processing patient {patient_id}, trial {nctid}...")
+            try:
+                # trialgpt_matching expects the full trial dict and patient text
+                matching_results = trialgpt_matching(
+                    trial_details, patient_text_with_sent_ids, model_name
+                )
+                output[patient_id][nctid] = matching_results
 
-                    with open(output_path, "w") as f:
-                        json.dump(output, f, indent=4)
-
-                except Exception as e:
-                    print(e)
-                    continue
+                # Save incrementally
+                with open(output_path, "w") as f:
+                    json.dump(output, f, indent=4)
+            except Exception as e:
+                print(f"Error processing patient {patient_id}, trial {nctid}: {e}")
+                output[patient_id][nctid] = {"error": str(e)}  # Log error in output
+                with open(output_path, "w") as f:  # Save error state
+                    json.dump(output, f, indent=4)
+                continue
+        print(f"Finished processing patient {patient_id}.")
+    print(f"All processing finished. Results saved to {output_path}")

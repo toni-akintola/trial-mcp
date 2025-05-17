@@ -8,6 +8,7 @@ import json
 import os
 from anthropic import Anthropic
 import sys
+import argparse  # Added for argument parsing
 
 # Initialize Anthropic client
 client = Anthropic(
@@ -70,27 +71,95 @@ def get_keyword_generation_result(
 
 
 if __name__ == "__main__":
-    # the corpus: trec_2021, trec_2022, or sigir
-    corpus = sys.argv[1]
+    parser = argparse.ArgumentParser(
+        description="Generate search keywords for patient notes."
+    )
+    parser.add_argument(
+        "corpus", type=str, help="The corpus to use (e.g., trec_2021, trec_2022, sigir)"
+    )
+    parser.add_argument(
+        "model", type=str, help="The model name to use for keyword generation"
+    )
+    parser.add_argument(
+        "--sample_size",
+        type=int,
+        default=None,
+        help="Number of samples to process from the queries file. Processes all if not specified.",
+    )
 
-    # the model index to use
-    model = sys.argv[2]
+    args = parser.parse_args()
+
+    corpus = args.corpus
+    model = args.model
+    sample_size = args.sample_size
 
     outputs = {}
+    processed_count = 0
 
-    with open(f"dataset/{corpus}/queries.jsonl", "r") as f:
+    queries_file_path = f"dataset/{corpus}/queries.jsonl"
+    if not os.path.exists(queries_file_path):
+        print(f"Error: Queries file not found at {queries_file_path}")
+        sys.exit(1)
+
+    with open(queries_file_path, "r") as f:
         for line in f.readlines():
+            if sample_size is not None and processed_count >= sample_size:
+                print(f"Reached sample size of {sample_size}. Stopping.")
+                break
+
             entry = json.loads(line)
+            print(
+                f"Processing patient ID: {entry['_id']} ({processed_count + 1}{f'/{sample_size}' if sample_size else ''})..."
+            )
             messages = get_keyword_generation_messages(entry["text"])
 
             # New call using the Anthropic wrapper function
-            message = get_keyword_generation_result(
+            message_content = get_keyword_generation_result(
                 messages=messages, model=model, temperature=0.0
             )
 
-            output = message.strip("`").strip("json")
+            try:
+                # Ensure the output is valid JSON before attempting to load
+                # The original code stripped backticks and "json", which can be brittle.
+                # A more robust approach is to find the JSON block if it's embedded.
+                if message_content.startswith("```json\n"):
+                    json_str = message_content[len("```json\n") : -len("```")]
+                elif message_content.startswith("```") and message_content.endswith(
+                    "```"
+                ):
+                    json_str = message_content[3:-3]
+                else:
+                    json_str = message_content
 
-            outputs[entry["_id"]] = json.loads(output)
+                outputs[entry["_id"]] = json.loads(json_str.strip())
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON for patient ID {entry['_id']}: {e}")
+                print(f"Received content: {message_content}")
+                outputs[entry["_id"]] = {
+                    "error": "Failed to decode JSON from LLM",
+                    "raw_content": message_content,
+                }
+            except Exception as e:
+                print(
+                    f"An unexpected error occurred for patient ID {entry['_id']}: {e}"
+                )
+                outputs[entry["_id"]] = {
+                    "error": str(e),
+                    "raw_content": message_content,
+                }
 
-            with open(f"results/retrieval_keywords_{model}_{corpus}.json", "w") as f:
-                json.dump(outputs, f, indent=4)
+            processed_count += 1
+
+            # Save incrementally, especially useful for long runs or sampling
+            output_file_path = f"results/retrieval_keywords_{model}_{corpus}{f'_sample{sample_size}' if sample_size else ''}.json"
+            with open(output_file_path, "w") as out_f:
+                json.dump(outputs, out_f, indent=4)
+            print(f"Incrementally saved to {output_file_path}")
+
+    final_output_file_path = f"results/retrieval_keywords_{model}_{corpus}{f'_sample{sample_size}' if sample_size else ''}.json"
+    # Final save (might be redundant if sample_size causes early exit, but good for clarity)
+    with open(final_output_file_path, "w") as f:
+        json.dump(outputs, f, indent=4)
+
+    print(f"Finished keyword generation. Total processed: {processed_count}.")
+    print(f"Results saved to {final_output_file_path}")
