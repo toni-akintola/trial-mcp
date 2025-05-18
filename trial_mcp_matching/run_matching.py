@@ -8,7 +8,7 @@ import json
 from nltk.tokenize import sent_tokenize
 import os
 import sys
-from TrialGPT import trialgpt_matching
+from trial_mcp_matching.TrialMCP import trialgpt_matching
 import concurrent.futures
 import time
 

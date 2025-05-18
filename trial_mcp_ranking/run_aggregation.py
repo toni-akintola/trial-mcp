@@ -12,7 +12,7 @@ import sys
 import time
 import concurrent.futures
 
-from TrialGPT import trialgpt_aggregation
+from trial_mcp_ranking.TrialMCP import trialgpt_aggregation
 
 # --- Configuration for Parallelization ---
 MAX_AGGREGATION_WORKERS = 5  # Number of concurrent API calls for aggregation
