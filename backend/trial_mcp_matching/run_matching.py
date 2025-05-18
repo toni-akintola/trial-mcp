@@ -77,7 +77,7 @@ async def main_async():
     )
     parser.add_argument(
         "--model_name",
-        default="claude-3-opus-20240229",
+        default="claude-3-7-sonnet-latest",
         help="Model name to be noted (actual model used is via MCPClient config).",
     )
     args = parser.parse_args()
@@ -93,7 +93,12 @@ async def main_async():
         print(f"Successfully connected to MCP Server at {mcp_server_url}")
 
         # Load patient notes
-        patient_queries_path = f"dataset/{corpus}/queries.jsonl"
+        patient_queries_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "dataset",
+            corpus,
+            "queries.jsonl",
+        )
         if not os.path.exists(patient_queries_path):
             print(f"Error: Patient queries file not found at {patient_queries_path}")
             sys.exit(1)
@@ -108,7 +113,9 @@ async def main_async():
         retrieved_data = json.load(open(retrieved_nctids_file_path))
 
         # Load master trial information
-        trial_info_path = "dataset/trial_info.json"
+        trial_info_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "dataset", "trial_info.json"
+        )
         if not os.path.exists(trial_info_path):
             print(f"Error: Trial info file not found at {trial_info_path}")
             sys.exit(1)
@@ -127,7 +134,11 @@ async def main_async():
 
         # Construct output filename based on arguments for clarity and consistency
         output_filename = f"matching_results_mcp_{args.model_name}_{args.corpus}{sample_suffix_str}.json"
-        output_path = os.path.join("results", output_filename)
+        results_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "results"
+        )
+        os.makedirs(results_dir, exist_ok=True)
+        output_path = os.path.join(results_dir, output_filename)
         print(f"Output will be saved to: {output_path}")
 
         if os.path.exists(output_path):

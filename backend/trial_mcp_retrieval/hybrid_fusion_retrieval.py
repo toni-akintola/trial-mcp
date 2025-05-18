@@ -33,7 +33,7 @@ print(f"Using PyTorch device: {device}")
 
 
 def get_bm25_corpus_index(corpus):
-    corpus_path = os.path.join(f"trialgpt_retrieval/bm25_corpus_{corpus}.json")
+    corpus_path = os.path.join(os.path.dirname(__file__), f"bm25_corpus_{corpus}.json")
 
     # if already cached then load, otherwise build
     if os.path.exists(corpus_path):
@@ -45,7 +45,14 @@ def get_bm25_corpus_index(corpus):
         tokenized_corpus = []
         corpus_nctids = []
 
-        with open(f"dataset/{corpus}/corpus.jsonl", "r") as f:
+        # Use path relative to backend folder
+        corpus_file_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "dataset",
+            corpus,
+            "corpus.jsonl",
+        )
+        with open(corpus_file_path, "r") as f:
             for line in f.readlines():
                 entry = json.loads(line)
                 corpus_nctids.append(entry["_id"])
@@ -72,8 +79,8 @@ def get_bm25_corpus_index(corpus):
 
 
 def get_medcpt_corpus_index(corpus):
-    corpus_path = f"trialgpt_retrieval/{corpus}_embeds.npy"
-    nctids_path = f"trialgpt_retrieval/{corpus}_nctids.json"
+    corpus_path = os.path.join(os.path.dirname(__file__), f"{corpus}_embeds.npy")
+    nctids_path = os.path.join(os.path.dirname(__file__), f"{corpus}_nctids.json")
 
     # if already cached then load, otherwise build
     if os.path.exists(corpus_path):
@@ -87,7 +94,14 @@ def get_medcpt_corpus_index(corpus):
         model = AutoModel.from_pretrained("ncbi/MedCPT-Article-Encoder").to(device)
         tokenizer = AutoTokenizer.from_pretrained("ncbi/MedCPT-Article-Encoder")
 
-        with open(f"dataset/{corpus}/corpus.jsonl", "r") as f:
+        # Use path relative to backend folder
+        corpus_file_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "dataset",
+            corpus,
+            "corpus.jsonl",
+        )
+        with open(corpus_file_path, "r") as f:
             print("Encoding the corpus")
             for line in tqdm.tqdm(f.readlines()):
                 entry = json.loads(line)
@@ -170,13 +184,19 @@ if __name__ == "__main__":
 
     # Output filename construction using args for clarity and consistency
     # The q_type (model) part of the name now comes from args.model_name
-    output_path = (
-        f"results/retrieved_nctids_{model_name_for_output}_{corpus}{sample_suffix}.json"
+    output_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "results",
+        f"retrieved_nctids_{model_name_for_output}_{corpus}{sample_suffix}.json",
     )
     print(f"Output will be saved to: {output_path}")
 
     # loading the qrels
-    _, _, qrels = GenericDataLoader(data_folder=f"dataset/{corpus}/").load(split="test")
+    # Use path relative to backend folder
+    data_folder = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "dataset", corpus
+    )
+    _, _, qrels = GenericDataLoader(data_folder=data_folder).load(split="test")
 
     # loading all types of queries
     if not os.path.exists(keyword_file_path):
@@ -196,7 +216,11 @@ if __name__ == "__main__":
     qid2nctids = {}
     recalls = []
 
-    with open(f"dataset/{corpus}/queries.jsonl", "r") as f:
+    # Use path relative to backend folder
+    queries_file_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "dataset", corpus, "queries.jsonl"
+    )
+    with open(queries_file_path, "r") as f:
         for line in tqdm.tqdm(f.readlines()):
             entry = json.loads(line)
             query = entry["text"]

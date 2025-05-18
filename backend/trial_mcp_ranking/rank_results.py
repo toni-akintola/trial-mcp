@@ -7,6 +7,7 @@ Rank the trials given the matching and aggregation results
 import json
 import sys
 import os
+import argparse
 
 eps = 1e-9
 
@@ -86,27 +87,110 @@ def get_agg_score(assessment):
     return score
 
 
-if __name__ == "__main__":
-    # args are the results paths
-    matching_results_path = sys.argv[1]
-    agg_results_path = sys.argv[2]
+def main():
+    parser = argparse.ArgumentParser(
+        description="Rank clinical trials based on patient-trial matching and aggregation results."
+    )
+    parser.add_argument(
+        "matching_results_path",
+        help="Path to the JSON file containing matching results.",
+    )
+    parser.add_argument(
+        "aggregation_results_path",
+        help="Path to the JSON file containing aggregation results.",
+    )
+    parser.add_argument(
+        "--top_k",
+        type=int,
+        default=10,
+        help="Number of top trials to display per patient.",
+    )
+    args = parser.parse_args()
 
-    # loading the results
+    matching_results_path = args.matching_results_path
+    aggregation_results_path = args.aggregation_results_path
+    top_k = args.top_k
+
+    if not os.path.exists(matching_results_path):
+        print(f"Error: Matching results file not found at {matching_results_path}")
+        sys.exit(1)
+
+    if not os.path.exists(aggregation_results_path):
+        print(
+            f"Error: Aggregation results file not found at {aggregation_results_path}"
+        )
+        sys.exit(1)
+
     matching_results = json.load(open(matching_results_path))
-    agg_results = json.load(open(agg_results_path))
+    aggregation_results = json.load(open(aggregation_results_path))
 
-    # Determine output file path from input paths (e.g., based on matching_results_path)
-    # base_name = os.path.basename(matching_results_path).replace("matching_results_", "final_ranking_") # Old logic
+    # Extract corpus and model information from filenames for output naming
+    matching_basename = os.path.basename(matching_results_path)
+    aggregation_basename = os.path.basename(aggregation_results_path)
 
-    # Derive output path from agg_results_path as it's the most processed input for this script
-    base_agg_filename = os.path.basename(agg_results_path)
-    # Input: aggregation_results_gpt-4-turbo_sigir_sample10.json
-    # Output: final_ranking_gpt-4-turbo_sigir_sample10.json
-    output_filename = base_agg_filename.replace("aggregation_results", "final_ranking")
+    # Define naming components for the output file
+    components = []
 
-    output_dir = "results/"  # Assuming results directory
-    os.makedirs(output_dir, exist_ok=True)
-    final_ranking_output_path = os.path.join(output_dir, output_filename)
+    # Try to extract the model name from either filename
+    model_name = None
+    for filename in [matching_basename, aggregation_basename]:
+        # Looking for patterns like matching_results_claude-3-opus-20240229_sigir.json
+        # or aggregation_results_mcp_claude-3-opus-20240229_sigir.json
+        for prefix in [
+            "matching_results_",
+            "aggregation_results_",
+            "matching_results_mcp_",
+            "aggregation_results_mcp_",
+        ]:
+            if filename.startswith(prefix):
+                parts = filename[len(prefix) :].split("_")
+                if len(parts) >= 1:
+                    potential_model = parts[0]
+                    if "claude" in potential_model or "gpt" in potential_model:
+                        model_name = potential_model
+                        break
+        if model_name:
+            break
+
+    if model_name:
+        components.append(model_name)
+
+    # Try to extract the corpus from filenames
+    corpus = None
+    for filename in [matching_basename, aggregation_basename]:
+        for potential_corpus in ["sigir", "trec_2021", "trec_2022"]:
+            if (
+                f"_{potential_corpus}" in filename
+                or f"_{potential_corpus.replace('_', '')}" in filename
+            ):
+                corpus = potential_corpus
+                break
+        if corpus:
+            break
+
+    if corpus:
+        components.append(corpus)
+
+    # Try to extract sample information
+    sample_info = None
+    for filename in [matching_basename, aggregation_basename]:
+        if "sample" in filename:
+            parts = filename.split("_")
+            for part in parts:
+                if part.startswith("sample"):
+                    sample_info = part
+                    break
+        if sample_info:
+            break
+
+    if sample_info:
+        components.append(sample_info)
+
+    # Construct the output filename
+    output_filename = "trial_rankings_" + "_".join(components) + ".json"
+    results_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "results")
+    os.makedirs(results_dir, exist_ok=True)
+    output_filepath = os.path.join(results_dir, output_filename)
 
     all_patients_ranked_scores = {}
 
@@ -134,13 +218,16 @@ if __name__ == "__main__":
 
             matching_score = get_matching_score(single_trial_match_output)
 
-            if patient_id not in agg_results or trial_id not in agg_results[patient_id]:
+            if (
+                patient_id not in aggregation_results
+                or trial_id not in aggregation_results[patient_id]
+            ):
                 print(
                     f"Patient {patient_id} Trial {trial_id} not in the aggregation results. Setting agg_score to 0."
                 )
                 agg_score = 0
             else:
-                aggregation_output = agg_results[patient_id][trial_id]
+                aggregation_output = aggregation_results[patient_id][trial_id]
                 if (
                     isinstance(aggregation_output, str)
                     or "error_aggregation" in aggregation_output
@@ -163,13 +250,17 @@ if __name__ == "__main__":
         print(f"Patient ID: {patient_id}")
         print("Clinical trial ranking:")
 
-        for trial, score in sorted_trial2score:
+        for trial, score in sorted_trial2score[:top_k]:
             print(trial, score)
 
         print("===")
         print()
 
     # Save the final ranked scores to a file
-    with open(final_ranking_output_path, "w") as f:
+    with open(output_filepath, "w") as f:
         json.dump(all_patients_ranked_scores, f, indent=4)
-    print(f"Final ranked scores saved to {final_ranking_output_path}")
+    print(f"Final ranked scores saved to {output_filepath}")
+
+
+if __name__ == "__main__":
+    main()

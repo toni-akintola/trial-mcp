@@ -11,7 +11,7 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 
 load_dotenv()  # load environment variables from .env
-CLAUDE_MODEL = "claude-3-sonnet-latest"
+CLAUDE_MODEL = "claude-3-7-sonnet-latest"
 
 
 class MCPClient:

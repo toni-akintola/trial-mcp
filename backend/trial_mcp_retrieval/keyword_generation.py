@@ -63,7 +63,7 @@ async def main_async():  # Main logic moved to async function
     parser.add_argument(
         "--model_name",
         type=str,
-        default="claude-3-opus-20240229",
+        default="claude-3-7-sonnet-latest",
         help="Model name for reference (actual model from MCPClient config).",
     )
     parser.add_argument(
@@ -92,7 +92,12 @@ async def main_async():  # Main logic moved to async function
         await mcp_client.connect_to_sse_server(server_url=mcp_server_url)
         print(f"Successfully connected to MCP Server at {mcp_server_url}")
 
-        queries_file_path = f"dataset/{corpus}/queries.jsonl"
+        queries_file_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "dataset",
+            corpus,
+            "queries.jsonl",
+        )
         if not os.path.exists(queries_file_path):
             print(f"Error: Queries file not found at {queries_file_path}")
             sys.exit(1)
@@ -151,7 +156,14 @@ async def main_async():  # Main logic moved to async function
                 # Save incrementally
                 # Using model_name_for_log in filename
                 output_file_suffix = f"_sample{sample_size}" if sample_size else ""
-                output_file_path = f"results/retrieval_keywords_mcp_{model_name_for_log}_{corpus}{output_file_suffix}.json"
+                results_dir = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)), "results"
+                )
+                os.makedirs(results_dir, exist_ok=True)
+                output_file_path = os.path.join(
+                    results_dir,
+                    f"retrieval_keywords_mcp_{model_name_for_log}_{corpus}{output_file_suffix}.json",
+                )
                 with open(output_file_path, "w") as out_f:
                     json.dump(outputs, out_f, indent=4)
                 if (
@@ -160,7 +172,10 @@ async def main_async():  # Main logic moved to async function
                 ):  # Log save less frequently
                     print(f"Incrementally saved to {output_file_path}")
 
-        final_output_file_path = f"results/retrieval_keywords_mcp_{model_name_for_log}_{corpus}{f'_sample{sample_size}' if sample_size else ''}.json"
+        final_output_file_path = os.path.join(
+            results_dir,
+            f"retrieval_keywords_mcp_{model_name_for_log}_{corpus}{f'_sample{sample_size}' if sample_size else ''}.json",
+        )
         with open(final_output_file_path, "w") as f:
             json.dump(outputs, f, indent=4)
         print(f"Finished keyword generation. Total processed: {processed_count}.")

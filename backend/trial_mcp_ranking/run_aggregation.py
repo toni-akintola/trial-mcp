@@ -75,7 +75,7 @@ async def main_async():
     )
     parser.add_argument(
         "--model_name",
-        default="claude-3-opus-20240229",
+        default="claude-3-7-sonnet-latest",
         help="Model name to be noted (actual model used is via MCPClient config).",
     )
     args = parser.parse_args()
@@ -91,10 +91,15 @@ async def main_async():
         print(f"Successfully connected to MCP Server at {mcp_server_url}")
 
         results = json.load(open(matching_results_path))
-        trial2info = json.load(open("dataset/trial_info.json"))
-        _, queries, _ = GenericDataLoader(data_folder=f"dataset/{corpus}/").load(
-            split="test"
+        trial_info_path = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "dataset", "trial_info.json"
         )
+        trial2info = json.load(open(trial_info_path))
+
+        data_folder = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "dataset", corpus
+        )
+        _, queries, _ = GenericDataLoader(data_folder=data_folder).load(split="test")
 
         base_matching_filename = os.path.basename(matching_results_path)
         # Try to derive a sensible suffix, assuming input might be like "matching_results_mcp_claude-3-opus-20240229_sigir_sample10.json"
@@ -121,7 +126,11 @@ async def main_async():
         output_filename = (
             "_".join(part for part in output_filename_parts if part) + ".json"
         )
-        output_path = os.path.join("results", output_filename)
+        results_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "results"
+        )
+        os.makedirs(results_dir, exist_ok=True)
+        output_path = os.path.join(results_dir, output_filename)
 
         if os.path.exists(output_path):
             try:
