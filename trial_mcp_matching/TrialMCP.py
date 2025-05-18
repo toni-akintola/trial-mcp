@@ -11,6 +11,22 @@ import os
 
 from anthropic import Anthropic
 
+# Assuming client.py is in the parent directory relative to trial_mcp_matching folder
+# Adjust if your project structure is different.
+import sys
+
+# Get the directory of the current file (TrialMCP.py)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the parent directory (trial_mcp_matching)
+parent_dir = os.path.dirname(current_dir)
+# Get the grandparent directory (project root where client.py is expected)
+project_root = os.path.dirname(parent_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from client import MCPClient
+
+
 client = Anthropic(
     api_key=os.getenv("ANTHROPIC_API_KEY"),
 )
@@ -97,76 +113,52 @@ def get_matching_prompt(
     return prompt, user_prompt
 
 
-def get_trialgpt_matching_result(
-    messages,
-    model,
-    max_tokens=256,
-    temperature=0.0,
-    top_p=1.0,
-    frequency_penalty=0,
-    presence_penalty=0,
-    stop_sequences=None,
+async def get_trialgpt_matching_result(
+    mcp_client: MCPClient,  # Added MCPClient
+    system_prompt_text: str,  # For clarity, passing system and user prompts separately
+    user_prompt_text: str,
+    # model, max_tokens, temperature, etc. are now handled by MCPClient's Claude call
+    # or would need to be passed to process_query if MCPClient supports overriding them
 ):
-    """Get the TrialGPT-Matching result using the Anthropic API."""
+    """Get the TrialGPT-Matching result using the MCPClient."""
 
     try:
-        # Separate system prompt if present, as Anthropic handles it differently
-        system_prompt = None
-        user_prompts = []
-        if messages and messages[0]["role"] == "system":
-            system_prompt = messages[0]["content"]
-            user_prompts = messages[1:]
-        else:
-            user_prompts = messages
-
-        completion = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=system_prompt,  # Pass system prompt via the 'system' parameter
-            messages=[  # Ensure messages are in the correct format
-                {"role": m["role"], "content": m["content"]} for m in user_prompts
-            ],
-            # top_p is supported
-            top_p=top_p,
-            # stop_sequences is supported
-            stop_sequences=stop_sequences if stop_sequences else [],
-            # frequency_penalty and presence_penalty are not directly supported in the same way.
-            # These would require different handling or custom logic if essential.
+        # The MCPClient's process_query will internally use its configured model and system prompt.
+        # The system_prompt in MCPClient is general. Here, the 'system_prompt_text'
+        # is more like specific instructions for this task. We'll prepend it to the user query.
+        full_query = (
+            f"{system_prompt_text}\n\n{user_prompt_text}"  # Corrected extra newline
         )
-        # Anthropic response structure
-        response_text = completion.content[0].text
-        response_text = response_text.strip("`").strip(
-            "json"
-        )  # Keep existing stripping
+
+        # The MCPClient's process_query should handle the interaction with Claude, including tools.
+        # For this specific matching task, it's primarily an LLM call.
+        response_text = await mcp_client.process_query(full_query)
+
+        # process_query is expected to return the final text string from Claude.
+        # We need to ensure the stripping logic is still valid.
+        response_text = response_text.strip("`").strip("json")
         return response_text
     except Exception as e:
-        print(f"Error in Anthropic API call: {e}")
-        # Existing error message was `message = ""` then `message.strip()...`
-        # which would fail. Returning empty string directly.
+        print(f"Error in MCPClient process_query call: {e}")
         return ""
 
 
-def trialgpt_matching(trial: dict, patient: str, model: str):
+async def trialgpt_matching(
+    mcp_client: MCPClient, trial: dict, patient: str, model: str
+):  # Added mcp_client, made async
     results = {}
-    MAX_MATCHING_TOKENS = 8192  # Define a higher max_tokens for matching
+    # MAX_MATCHING_TOKENS is not directly passed to MCPClient here.
+    # It's assumed MCPClient's Claude call has appropriate token limits.
 
     # doing inclusions and exclusions in separate prompts
     for inc_exc in ["inclusion", "exclusion"]:
-        # get_matching_prompt expects trial_info, inc_exc, patient
-        # The 'trial' object passed to this function is the trial_info
         system_prompt, user_prompt = get_matching_prompt(trial, inc_exc, patient)
 
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-
-        message = get_trialgpt_matching_result(
-            messages=messages,
-            model=model,
-            temperature=0.0,
-            max_tokens=MAX_MATCHING_TOKENS,  # Pass higher max_tokens
+        message = await get_trialgpt_matching_result(
+            mcp_client=mcp_client,
+            system_prompt_text=system_prompt,
+            user_prompt_text=user_prompt,
+            # model and other params are handled by MCPClient's configuration
         )
 
         try:
