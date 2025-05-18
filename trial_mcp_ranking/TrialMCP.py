@@ -8,10 +8,19 @@ import json
 from nltk.tokenize import sent_tokenize
 import time
 import os
+import sys
 
 from anthropic import Anthropic
 
-# Initialize Anthropic client
+# Adjust sys.path to find client.py in the project root
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root_dir = os.path.dirname(os.path.dirname(current_file_dir))  # Up two levels
+if project_root_dir not in sys.path:
+    sys.path.insert(0, project_root_dir)
+
+from client import MCPClient  # Added MCPClient import
+
+# Initialize Anthropic client (original, might be removed if MCPClient fully replaces)
 client = Anthropic(
     api_key=os.getenv("ANTHROPIC_API_KEY"),
 )
@@ -95,71 +104,52 @@ def get_ranking_llm_prompts(
     return system_prompt, user_prompt
 
 
-def get_trialgpt_ranking_result(
-    messages,
-    model,
-    max_tokens=8192,  # Default from OpenAI, adjust if needed
-    temperature=0.0,
-    # Anthropic doesn't use top_p, frequency_penalty, presence_penalty in the same way for messages.create
+async def get_trialgpt_ranking_result(  # Made async
+    mcp_client: MCPClient,  # Added mcp_client
+    system_prompt_text: str,
+    user_prompt_text: str,
+    # model, max_tokens, temperature are now handled by MCPClient or its internal call
 ):
-    """Get the TrialGPT-Ranking result using the Anthropic API."""
-
-    # Map OpenAI model names to Anthropic model names
-    # if model == "gpt-4-turbo":
-    #     anthropic_model = "claude-3-opus-20240229"
-    # elif model == "gpt-35-turbo":
-    #     anthropic_model = "claude-3-sonnet-20240229"
-    # else:
-    #     anthropic_model = model
-    anthropic_model = model  # Use the model parameter directly
+    """Get the TrialGPT-Ranking result using the MCPClient."""
+    anthropic_model = (
+        "claude-3-opus-20240229"  # Defaulting, MCPClient will use its own config
+    )
 
     try:
-        system_prompt = None
-        user_prompts = []
-        if messages and messages[0]["role"] == "system":
-            system_prompt = messages[0]["content"]
-            user_prompts = messages[1:]
-        else:
-            user_prompts = messages
+        # Combine system and user prompts for MCPClient's process_query
+        full_query = f"{system_prompt_text}\\n\\n{user_prompt_text}"
 
-        completion = client.messages.create(
-            model=anthropic_model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=system_prompt,
-            messages=[
-                {"role": m["role"], "content": m["content"]} for m in user_prompts
-            ],
-        )
-        return completion.content[0].text
+        response_text = await mcp_client.process_query(full_query)
+
+        # Assuming process_query returns the text content directly.
+        # Stripping of backticks and "json" will be handled in trialgpt_aggregation
+        return response_text
     except Exception as e:
-        print(f"Error in Anthropic API call for ranking: {e}")
+        print(f"Error in MCPClient process_query for ranking: {e}")
         return ""
 
 
-def trialgpt_aggregation(
-    patient_note: str, trial_results: dict, trial_info: dict, model: str
+async def trialgpt_aggregation(  # Made async
+    mcp_client: MCPClient,  # Added mcp_client
+    patient_note: str,
+    trial_results: dict,
+    trial_info: dict,
+    model: str,  # Kept model, though MCPClient uses its own config
 ):
-    # Convert the structured trial_results (dict) from matching phase into a string representation
     criteria_pred_string = convert_criteria_pred_to_string(trial_results, trial_info)
 
-    # Get prompts for the LLM call, now passing trial_info as well for full context if needed by get_ranking_llm_prompts
     system_prompt, user_prompt = get_ranking_llm_prompts(
         patient_note, criteria_pred_string, trial_info
     )
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
-    ]
-
-    message_content = get_trialgpt_ranking_result(
-        messages=messages, model=model, temperature=0.0
+    # No longer constructing messages list for direct Anthropic call
+    message_content = await get_trialgpt_ranking_result(
+        mcp_client=mcp_client,
+        system_prompt_text=system_prompt,
+        user_prompt_text=user_prompt,
+        # model and other params are handled by MCPClient's configuration
     )
 
-    # Stripping is now expected to be done by the caller if needed,
-    # or ensure get_trialgpt_ranking_result does it consistently.
-    # For now, retaining the stripping here as per original structure for this function.
     message_content = message_content.strip("`").strip("json")
 
     try:

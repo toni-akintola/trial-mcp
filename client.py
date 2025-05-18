@@ -66,7 +66,7 @@ class MCPClient:
         response = self.anthropic.messages.create(
             system=system_prompt,
             model=CLAUDE_MODEL,
-            max_tokens=1000,
+            max_tokens=15000,
             messages=messages,
             tools=available_tools,
         )
@@ -96,12 +96,12 @@ class MCPClient:
                 response = self.anthropic.messages.create(
                     system=system_prompt,
                     model=CLAUDE_MODEL,
-                    max_tokens=1000,
+                    max_tokens=15000,
                     messages=messages,
-                    thinking={
-                        "type": "enabled",
-                        "budget_tokens": 10000,
-                    },
+                    # thinking={
+                    #     "type": "enabled",
+                    #     "budget_tokens": 10000,
+                    # },
                 )
 
                 final_text.append(response.content[0].text)
