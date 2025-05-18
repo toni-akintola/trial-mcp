@@ -35,7 +35,7 @@ export function HeroSection() {
               <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-muted flex items-center justify-center">
                 <div className="text-center space-y-2 p-4">
                   <div className="inline-block rounded-lg bg-background/90 px-3 py-1 text-sm backdrop-blur">
-                    Futuristic AI Visualization
+                    The future of clinical trial matching
                   </div>
                   <div className="h-40 w-40 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
                     <div className="h-32 w-32 rounded-full bg-primary/30 flex items-center justify-center">
