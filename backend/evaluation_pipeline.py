@@ -211,11 +211,13 @@ def evaluate_matching_component(gt_data: list, model_results: dict):
         if total_criteria_evaluated > 0
         else 0.0
     )
+
     avg_sentence_precision = (
         sum(sentence_precisions) / len(sentence_precisions)
         if sentence_precisions
         else 0.0
     )
+
     avg_sentence_recall = (
         sum(sentence_recalls) / len(sentence_recalls) if sentence_recalls else 0.0
     )

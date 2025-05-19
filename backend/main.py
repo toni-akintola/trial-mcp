@@ -24,12 +24,14 @@ import torch  # Transformers often requires torch
 # Initialize MCP Server
 mcp = FastMCP()
 
+BERT_MODEL = "pabRomero/BioClinicalBERT-full-finetuned-ner-pablo"
+
 # --- Hugging Face Model Initialization ---
 # Load once to be reused by the tool.
 # Note: The first time this runs, it will download the model (can be several hundred MBs).
 try:
     print("Loading Bio_ClinicalBERT tokenizer...")
-    tokenizer = AutoTokenizer.from_pretrained("emilyalsentzer/Bio_ClinicalBERT")
+    tokenizer = AutoTokenizer.from_pretrained(BERT_MODEL)
     print("Loading Bio_ClinicalBERT model for token classification pipeline...")
     # Using a pipeline for token classification.
     # The base emilyalsentzer/Bio_ClinicalBERT model might not have a readily available NER head
@@ -39,7 +41,7 @@ try:
     # or fine-tuning this base model on your NER task.
     ner_pipeline = hf_pipeline(
         "token-classification",
-        model="emilyalsentzer/Bio_ClinicalBERT",
+        model=BERT_MODEL,
         tokenizer=tokenizer,
         aggregation_strategy="simple",
     )
@@ -53,8 +55,6 @@ except Exception as e:
 
 
 # --- Placeholder/Stub Implementations ---
-
-
 def bio_ner_map(text: str) -> list[str]:
     """Placeholder for BioClinicalBERT call + OMOP mapping."""
     print(f"Bio_ClinicalBERT bio_ner_map received text: '{text[:50]}...'")

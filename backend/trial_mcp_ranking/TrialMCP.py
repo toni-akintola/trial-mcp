@@ -108,21 +108,14 @@ async def get_trialgpt_ranking_result(  # Made async
     mcp_client: MCPClient,  # Added mcp_client
     system_prompt_text: str,
     user_prompt_text: str,
-    # model, max_tokens, temperature are now handled by MCPClient or its internal call
 ):
     """Get the TrialGPT-Ranking result using the MCPClient."""
-    anthropic_model = (
-        "claude-3-opus-20240229"  # Defaulting, MCPClient will use its own config
-    )
-
     try:
         # Combine system and user prompts for MCPClient's process_query
         full_query = f"{system_prompt_text}\\n\\n{user_prompt_text}"
 
         response_text = await mcp_client.process_query(full_query)
 
-        # Assuming process_query returns the text content directly.
-        # Stripping of backticks and "json" will be handled in trialgpt_aggregation
         return response_text
     except Exception as e:
         print(f"Error in MCPClient process_query for ranking: {e}")
